@@ -36,7 +36,7 @@ uint8_t sdmmc_cmd_read_type( SDMMC_TypeDef *SDMMCx );
 // registers into a buffer. This receives the response from a command.
 // If `type` is `SDMMC_RESPONSE_SHORT`, only the first word is read.
 // If `type` is `SDMMC_RESPONSE_LONG`, all 4 words are read.
-void sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, int type, void *buf );
+int sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, int type, void *buf );
 // Acknowledge that a command response was received. This does not
 // send any data to the SD card; it just resets internal state.
 void sdmmc_cmd_done( SDMMC_TypeDef *SDMMCx );

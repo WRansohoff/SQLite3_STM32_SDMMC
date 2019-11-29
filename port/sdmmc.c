@@ -71,16 +71,52 @@ uint8_t sdmmc_cmd_read_type( SDMMC_TypeDef *SDMMCx ) {
  * If `type` is `SDMMC_RESPONSE_SHORT`, only the first word is read.
  * If `type` is `SDMMC_RESPONSE_LONG`, all 4 words are read.
  */
-void sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, int type, void *buf ) {
-  // TODO
+int sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, int type, void *buf ) {
+  uint32_t *buf_ptr = ( uint32_t* )buf;
+  // Wait for a response to be received, or some sort of failure.
+  while ( !( SDMMCx->STA & ( SDMMC_STA_CMDSENT |
+                             SDMMC_STA_CMDREND |
+                             SDMMC_STA_CTIMEOUT |
+                             SDMMC_STA_CCRCFAIL ) ) ) {};
+  if ( SDMMC_STA_CMDREND ) {
+    // Only check for received data if a valid response was received.
+    if ( type == SDMMC_RESPONSE_SHORT ) {
+      // Only read the first response register for short responses.
+      buf_ptr[ 0 ] = SDMMCx->RESP1;
+      // Success; return 0.
+      return 0;
+    }
+    else if ( type == SDMMC_RESPONSE_LONG ) {
+      // Read all four response registers for long responses.
+      // Note that `RESP1` holds the most significant bytes.
+      buf_ptr[ 0 ] = SDMMCx->RESP4;
+      buf_ptr[ 1 ] = SDMMCx->RESP3;
+      buf_ptr[ 2 ] = SDMMCx->RESP2;
+      buf_ptr[ 3 ] = SDMMCx->RESP1;
+      // Success; return 0.
+      return 0;
+    }
+  }
+  // No valid response received, or invalid response type: return -1.
+  return -1;
 }
 
 /**
  * Acknowledge that a command response was received. This does not
  * send any data to the SD card; it just resets internal state.
+ * TODO: I put this in a separate method so that the `read_type`
+ * and `read` methods could be called independently, but it would
+ * probably be better to make a struct to hold holistic response
+ * data and put all of this logic into one method.
  */
 void sdmmc_cmd_done( SDMMC_TypeDef *SDMMCx ) {
-  // TODO
+  // Clear all 'command receive' status and error flags.
+  // Like many STM32 peripherals, setting a bit in the 'clear' register
+  // actually clears the corresponding bit in the 'status' register.
+  SDMMCx->ICR |= ( SDMMC_ICR_CMDSENTC |
+                   SDMMC_ICR_CMDRENDC |
+                   SDMMC_ICR_CTIMEOUTC |
+                   SDMMC_ICR_CCRCFAILC );
 }
 
 /**
