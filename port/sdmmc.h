@@ -14,6 +14,10 @@
 // Device header file.
 #include "stm32l4xx.h"
 
+// Macro definitions. TODO: Enum?
+#define SDMMC_RESPONSE_SHORT ( 0 )
+#define SDMMC_RESPONSE_LONG  ( 1 )
+
 // Setup an SD/MMC peripheral for simple 'polling mode'.
 // This is slow; no interrupts, hardware flow control, or DMA.
 void sdmmc_setup( SDMMC_TypeDef *SDMMCx );
@@ -21,13 +25,14 @@ void sdmmc_setup( SDMMC_TypeDef *SDMMCx );
 // Send a command to the SD/MMC card.
 void sdmmc_cmd_write( SDMMC_TypeDef *SDMMCx,
                       uint32_t cmd,
-                      uint32_t dat,
-                      uint32_t index );
+                      uint32_t dat );
 // Read the index of a card's response to a command.
-uint8_t sdmmc_cmd_read_index( SDMMC_TypeDef *SDMMCx );
-// Read the contents of one of the SDMMC peripheral's 'command
-// response registers'. This can receive the response from a command.
-uint32_t sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, uint8_t reg );
+uint8_t sdmmc_cmd_read_type( SDMMC_TypeDef *SDMMCx );
+// Read the contents of the SDMMC peripheral's 'command response'
+// registers into a buffer. This receives the response from a command.
+// If `type` is `SDMMC_RESPONSE_SHORT`, only the first word is read.
+// If `type` is `SDMMC_RESPONSE_LONG`, all 4 words are read.
+void sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, int type, void *buf );
 // Tell the connected SD card to use a specified block size.
 // I think that the block size is defined in bytes.
 uint32_t sdmmc_set_block_len( SDMMC_TypeDef *SDMMCx, uint32_t bsize );

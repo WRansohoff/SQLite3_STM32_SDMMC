@@ -3,24 +3,6 @@
 SDCard card = {0, 0, 0, 0};
 SDMMC_TypeDef *sdmmc = SDMMC1;
 
-/**
- * Send a command to the current SD card.
- * The 'chksm' argument is accepted for library compatibility,
- * but it is ignored because the STM32 SD/MMC peripheral can
- * automatically perform CRC checks for each transmission.
- * TODO: I think 'application commands' need to be handled
- * differently. Also, CMD12 might require special handling?
- */
-uint16_t sd_command( uint8_t code, uint32_t data, uint8_t chksm ) {
-  // Write the command and data. Use index #0 for now as a
-  // stopgap; I'm not really sure how these response index
-  // registers work yet.
-  uint8_t cmd_index = 0;
-  sdmmc_cmd_write( sdmmc, ( uint32_t )code, data, cmd_index );
-  // Block on receiving the command response, then return it.
-  return sdmmc_cmd_read( sdmmc, cmd_index );
-}
-
 /** Perform a software reset on the current SD card. */
 int sd_card_reset() {
   // TODO
@@ -36,6 +18,13 @@ int block_init() {
   // the SD card.
   return sd_card_reset();
 }
+
+/**
+ * Shut down the SD card interface.
+ * TODO: Currently unused, it looks unnecessary for the applications
+ * that I have in mind.
+ */
+int block_halt() { return 0; }
 
 /** Read a block from the current SD card into a given buffer. */
 int block_read( blockno_t block, void *buf ) {
