@@ -17,6 +17,7 @@
 //#include "port/dma.h"
 #include "port/gpio.h"
 #include "port/rcc.h"
+#include "port/sdmmc.h"
 //#include "port/spi.h"
 #include "port/tim.h"
 //#include "port/uart.h"
@@ -249,7 +250,7 @@ static inline void board_init( void ) {
   */
 
   // Setup the SD/MMC interface.
-  // TODO
+  sdmmc_setup( SDMMC1 );
 
   /*
   // Enable DMA1, Channel 4 (Audio TX).
@@ -261,7 +262,5 @@ static inline void board_init( void ) {
   while ( !( ADC1->ISR & ADC_ISR_ADRDY ) ) {};
   */
 }
-
-
 
 #endif

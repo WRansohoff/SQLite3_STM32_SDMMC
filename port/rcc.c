@@ -22,7 +22,7 @@ void clock_init( void ) {
   // TODO: It's lazy to use the internal 48MHz oscillator,
   // when the PLLSAI1 clock can also be used.
   RCC->CR    |=  ( RCC_CR_HSION );
-  RCC->CRRCR |=  ( RCC_CR_HSI48ON );
+  RCC->CRRCR |=  ( RCC_CRRCR_HSI48ON );
   // PLL configuration: frequency = ( 16MHz * ( N / M ) ) / R
   // For 80MHz, R = 2, M = 1, N = 10.
   RCC->PLLCFGR &= ~( RCC_PLLCFGR_PLLN |
