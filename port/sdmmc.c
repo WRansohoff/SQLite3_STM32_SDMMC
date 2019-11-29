@@ -31,6 +31,7 @@ void sdmmc_setup( SDMMC_TypeDef *SDMMCx ) {
 /** Send a command to the SD/MMC card. */
 void sdmmc_cmd_write( SDMMC_TypeDef *SDMMCx,
                       uint32_t cmd,
+                      uint32_t dat,
                       uint32_t index ) {
   // TODO
 }
@@ -45,7 +46,7 @@ uint8_t sdmmc_cmd_read_index( SDMMC_TypeDef *SDMMCx ) {
  * Read the contents of one of the SDMMC peripheral's 'command
  * response registers'. This can receive the response from a command.
  */
-uint32_t sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx ) {
+uint32_t sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, uint8_t reg ) {
   // TODO
   return 0;
 }
@@ -55,7 +56,7 @@ uint32_t sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx ) {
  * block size. I think that the block size is defined in bytes.
  * This method blocks on the SD card's response, which is returned.
  */
-uint32_t sdmmc_set_block_len( SDMMC_TypeDef *SDMMC, uint32_t bsize ) {
+uint32_t sdmmc_set_block_len( SDMMC_TypeDef *SDMMCx, uint32_t bsize ) {
   // TODO
   return 0;
 }
@@ -64,7 +65,15 @@ uint32_t sdmmc_set_block_len( SDMMC_TypeDef *SDMMC, uint32_t bsize ) {
  * Send a command to tell the connected SD card to use a specified
  * bus width. This method blocks on and returns the SD card response.
  */
-uint32_t sdmmc_set_bus_width( SDMMC_TypeDef *SDMMC, uint32_t width ) {
+uint32_t sdmmc_set_bus_width( SDMMC_TypeDef *SDMMCx, uint32_t width ) {
+  // TODO
+  return 0;
+}
+
+/**
+ * Figure out how much storage capacity the SD card (claims to) have.
+ */
+uint32_t sdmmc_get_volume_size( SDMMC_TypeDef *SDMMCx ) {
   // TODO
   return 0;
 }

@@ -33,6 +33,7 @@
 
 #include <stdint.h>
 #include "block.h"
+#include "port/sdmmc.h"
 
 /* Constants used to define card types */
 #define SD_CARD_NONE  0    /* No SD card found */

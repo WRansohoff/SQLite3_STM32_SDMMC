@@ -12,7 +12,7 @@ The files under `port/` are provided so that the library can build with basic fi
 
 This build depends on the `Gristle` FAT filesystem library, but a snapshot is included in this repository, so you should just be able to run `make`.
 
-Here are links to the `Gristle` filesystem library and the very cool `OggBox` project which is was written for. Both appear to be distributed under a 2-Clause BSD license:
+Here are links to the `Gristle` filesystem library and the very cool `OggBox` project which it was written for. Both appear to be distributed under a 2-Clause BSD license:
 
 https://github.com/hairymnstr/gristle/
 
