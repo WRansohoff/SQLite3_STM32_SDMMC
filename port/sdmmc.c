@@ -15,31 +15,54 @@ void sdmmc_setup( SDMMC_TypeDef *SDMMCx ) {
   // * Set bus width to 4 bits (microSD cards have DAT0-3 lines)
   // * Disable power-saving mode for now. (TODO: Use PWRSAV bit)
   // * Set CLKDIV to 0 (even though it is not used with clock bypass)
-  SDMMC1->CLKCR &= ~( SDMMC_CLKCR_CLKDIV |
+  SDMMCx->CLKCR &= ~( SDMMC_CLKCR_CLKDIV |
                       SDMMC_CLKCR_PWRSAV |
                       SDMMC_CLKCR_BYPASS |
                       SDMMC_CLKCR_WIDBUS |
                       SDMMC_CLKCR_NEGEDGE |
                       SDMMC_CLKCR_HWFC_EN );
-  SDMMC1->CLKCR |=  ( 0x1 << SDMMC_CLKCR_WIDBUS_Pos );
+  SDMMCx->CLKCR |=  ( 0x1 << SDMMC_CLKCR_WIDBUS_Pos );
   // Power on the SD/MMC peripheral.
-  SDMMC1->POWER |=  ( SDMMC_POWER_PWRCTRL );
+  SDMMCx->POWER |=  ( SDMMC_POWER_PWRCTRL );
   // Wait for the peripheral to exit 'powering up' mode.
   while ( ( SDMMCx->POWER & SDMMC_POWER_PWRCTRL ) == 0x2 ) {};
+  // TODO: From the RM, it sounds like delaying a few cycles here
+  // might be a good idea to ensure the power supply is stable?
 }
 
 /** Send a command to the SD/MMC card. */
 void sdmmc_cmd_write( SDMMC_TypeDef *SDMMCx,
                       uint32_t cmd,
-                      uint32_t dat ) {
+                      uint32_t dat,
+                      int resp_type ) {
   // The `ARG` register holds the command argument / data.
-  // TODO
+  SDMMCx->ARG  =  ( dat );
+  // Set the `CMD` ('command') register. Use the internal `CPSM`
+  // state machine to auto-receive the response.
+  SDMMCx->CMD &= ~( SDMMC_CMD_CMDINDEX |
+                    SDMMC_CMD_CPSMEN |
+                    SDMMC_CMD_WAITRESP |
+                    SDMMC_CMD_WAITINT |
+                    SDMMC_CMD_WAITPEND |
+                    SDMMC_CMD_SDIOSUSPEND );
+  SDMMCx->CMD |=  ( ( ( resp_type & 0x3 ) << SDMMC_CMD_WAITRESP_Pos ) |
+                    SDMMC_CMD_CPSMEN |
+                    ( cmd << SDMMC_CMD_CMDINDEX_Pos ) );
 }
 
 /** Read the ID / category of a card's response to a command. */
 uint8_t sdmmc_cmd_read_type( SDMMC_TypeDef *SDMMCx ) {
-  // TODO
-  return 0;
+  // Wait for a response to be received, or some sort of failure.
+  while ( !( SDMMCx->STA & ( SDMMC_STA_CMDSENT |
+                             SDMMC_STA_CMDREND |
+                             SDMMC_STA_CTIMEOUT |
+                             SDMMC_STA_CCRCFAIL ) ) ) {};
+  // If a command had a response, return its type.
+  if ( SDMMCx->STA & SDMMC_STA_CMDREND ) {
+    return ( SDMMCx->RESPCMD & SDMMC_RESPCMD_RESPCMD );
+  }
+  // If there is an error or no response, return 0xFF.
+  return 0xFF;
 }
 
 /**
@@ -48,9 +71,16 @@ uint8_t sdmmc_cmd_read_type( SDMMC_TypeDef *SDMMCx ) {
  * If `type` is `SDMMC_RESPONSE_SHORT`, only the first word is read.
  * If `type` is `SDMMC_RESPONSE_LONG`, all 4 words are read.
  */
-uint32_t sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, int type, void *buf ) {
+void sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, int type, void *buf ) {
   // TODO
-  return 0;
+}
+
+/**
+ * Acknowledge that a command response was received. This does not
+ * send any data to the SD card; it just resets internal state.
+ */
+void sdmmc_cmd_done( SDMMC_TypeDef *SDMMCx ) {
+  // TODO
 }
 
 /**
