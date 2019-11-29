@@ -61,7 +61,11 @@ uint8_t sdmmc_cmd_read_type( SDMMC_TypeDef *SDMMCx ) {
   if ( SDMMCx->STA & SDMMC_STA_CMDREND ) {
     return ( SDMMCx->RESPCMD & SDMMC_RESPCMD_RESPCMD );
   }
-  // If there is an error or no response, return 0xFF.
+  // If there is no response and no error, return 0. I think that
+  // CMDSENT indicates that no response was asked for, so this is OK.
+  else if ( SDMMCx->STA & SDMMC_STA_CMDSENT ) { return 0x00; }
+  // If there is an error, return 0xFF. This is the usual 'nothing
+  // happened' response when SPI is used, so...sure.
   return 0xFF;
 }
 
@@ -78,7 +82,7 @@ int sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, int type, void *buf ) {
                              SDMMC_STA_CMDREND |
                              SDMMC_STA_CTIMEOUT |
                              SDMMC_STA_CCRCFAIL ) ) ) {};
-  if ( SDMMC_STA_CMDREND ) {
+  if ( SDMMCx->STA & SDMMC_STA_CMDREND ) {
     // Only check for received data if a valid response was received.
     if ( type == SDMMC_RESPONSE_SHORT ) {
       // Only read the first response register for short responses.
@@ -96,6 +100,10 @@ int sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, int type, void *buf ) {
       // Success; return 0.
       return 0;
     }
+  }
+  else if ( SDMMCx->STA & SDMMC_STA_CMDSENT ) {
+    // No response expected, and no errors: return 0.
+    return 0;
   }
   // No valid response received, or invalid response type: return -1.
   return -1;
