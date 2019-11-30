@@ -118,6 +118,13 @@ int sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, int type, void *buf ) {
  * data and put all of this logic into one method.
  */
 void sdmmc_cmd_done( SDMMC_TypeDef *SDMMCx ) {
+  // Wait for one of the relevant status flags to be set.
+  // TODO: Add a timeout, or better yet make this part of
+  // the 'read response' methods.
+  while ( !( SDMMCx->STA & ( SDMMC_STA_CMDSENT |
+                             SDMMC_STA_CMDREND |
+                             SDMMC_STA_CTIMEOUT |
+                             SDMMC_STA_CCRCFAIL ) ) ) {};
   // Clear all 'command receive' status and error flags.
   // Like many STM32 peripherals, setting a bit in the 'clear' register
   // actually clears the corresponding bit in the 'status' register.

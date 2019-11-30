@@ -49,10 +49,11 @@
 
 /* SD card info struct */
 typedef struct {
-  uint16_t  card_type;
-  uint8_t   read_only;
   uint32_t  size;
+  uint16_t  type;
+  uint16_t  addr;
   uint8_t   error;
+  uint8_t   read_only;
 } SDCard;
 
 #endif
