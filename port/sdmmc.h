@@ -160,10 +160,8 @@ void sdmmc_cmd_done( SDMMC_TypeDef *SDMMCx );
 uint32_t sdmmc_set_block_len( SDMMC_TypeDef *SDMMCx, uint32_t bsize );
 // Tell the connected SD card to use a specified bus width.
 uint32_t sdmmc_set_bus_width( SDMMC_TypeDef *SDMMCx, uint32_t width );
-// Figure out how much storage capacity the SD card (claims to) have.
-// TODO: I think that a 32-bit int might be too small for very
-// high-capacity cards, but the higher addresses wouldn't be
-// supported by this interface anyways.
+// Figure out how much storage capacity the SD card claims
+// to have, in 512-byte blocks. (NOT in bytes)
 uint32_t sdmmc_get_volume_size( SDMMC_TypeDef *SDMMCx );
 
 // Read N blocks of data from an address on the SD/MMC card.

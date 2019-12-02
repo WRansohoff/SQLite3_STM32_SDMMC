@@ -47,9 +47,13 @@
 #define SD_ERR_NO_PART      1
 #define SD_ERR_NOT_PRESENT  2
 
-/* SD card info struct */
+/*
+ * SD card info struct
+ * Note: the `blocks` value represents the card's capacity in
+ * 512-byte blocks. To get the capacity in bytes, multiply by 512.
+ */
 typedef struct {
-  uint32_t  size;
+  uint32_t  blocks;
   uint16_t  type;
   uint16_t  addr;
   uint8_t   error;

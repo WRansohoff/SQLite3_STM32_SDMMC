@@ -136,13 +136,25 @@ int block_init() {
   // indicates whether the card is standard- or high-capacity.
   // We already know that at this point, but SC cards have different
   // responses from HC cards. For SC cards, the card's storage
-  // capacity in bytes = SIZE_C * 2^(C_SIZE_MULT+2) * 2^(READ_BL_LEN)
+  // capacity in bytes = (SIZE_C+1)*2^(C_SIZE_MULT+2)*2^(READ_BL_LEN)
   // where SIZE_C is bits 62-73, C_SIZE_MULT is bits 47-49, and
   // READ_BL_LEN is bits 80-83. SDHC / SDXC cards are easier:
-  // capacity (Kbytes) = SIZE_C * 512, and SIZE_C is bits 48-69.
-  // Note that the SD card spec says (SIZE_C+1) instead of SIZE_C
-  // for the above equations, but I can't make that math match
-  // their examples, and I'd rather underestimate a card's size.
+  // capacity (Kbytes) = (SIZE_C+1)*512, and SIZE_C is bits 48-69.
+  if ( card.type == SD_CARD_HC ) {
+    // High-capacity card. Retrieve `SIZE_C` from bits 48-69.
+    uint32_t size_c = ( ( cmd_resp[ 1 ] >> 16 ) & 0x0000FFFF ) |
+                      ( ( cmd_resp[ 2 ] & 0x0000003F ) << 16 );
+    // Total capacity is the value * 512KB. Divide by 512 to get the
+    // number of blocks, so `card.blocks` = `size_c` * 1024.
+    card.blocks = size_c * 1024;
+  }
+  else {
+    // Standard-capacity card.
+    // TODO: Calculate size.
+
+    // TODO: CMD16 to set block size to 512 bytes. SDHC / SDXC cards
+    // do not need this command, since their block size is fixed.
+  }
   // (TODO: Perform the calculations described above)
 
   // TODO: CMD16 to ensure the block length is set to 512B.
@@ -182,11 +194,11 @@ int block_write( blockno_t block, void *buf ) {
   return 0;
 }
 
-/** Get the storage capacity of the currently-connected SD card. */
-blockno_t block_get_volume_size() {
-  // Return ( # of bytes ) / ( block size )
-  return sdmmc_get_volume_size( sdmmc ) / block_get_block_size();
-}
+/**
+ * Get the storage capacity of the currently-connected SD card. This
+ * returns the number of 512-byte blocks, not the number of bytes.
+ */
+blockno_t block_get_volume_size() { return card.blocks; }
 
 /** Get the size of a block in the filesystem. */
 int block_get_block_size() { return BLOCK_SIZE; }
