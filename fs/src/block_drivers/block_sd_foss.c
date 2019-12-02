@@ -145,8 +145,8 @@ int block_init() {
     uint32_t size_c = ( ( cmd_resp[ 1 ] >> 16 ) & 0x0000FFFF ) |
                       ( ( cmd_resp[ 2 ] & 0x0000003F ) << 16 );
     // Total capacity is the value * 512KB. Divide by 512 to get the
-    // number of blocks, so `card.blocks` = `size_c` * 1024.
-    card.blocks = size_c * 1024;
+    // number of blocks, so `card.blocks` = ( `size_c` + 1 ) * 1024.
+    card.blocks = ( size_c + 1 ) * 1024;
   }
   else {
     // Standard-capacity card.
