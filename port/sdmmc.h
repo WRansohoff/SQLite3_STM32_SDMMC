@@ -21,6 +21,13 @@
 #define SDMMC_RESPONSE_SHORT ( 1 )
 #define SDMMC_RESPONSE_NONE2 ( 2 )
 #define SDMMC_RESPONSE_LONG  ( 3 )
+// Bus width definitions.
+#define SDMMC_BUS_WIDTH_1b   ( 0x00000000 )
+#define SDMMC_BUS_WIDTH_4b   ( 0x00000002 )
+// Card type definition.
+#define SDMMC_SC             ( 0 )
+#define SDMMC_HC             ( 1 )
+
 // SD card command index values. Because referring to them as
 // `CMD0`, `CMD1`, etc is confusing and not very helpful.
 // This is not an exhaustive list of valid commands.
@@ -134,7 +141,6 @@
 // App command to read SD card configuration register.
 #define SDMMC_APP_GET_SCR        ( 51 )
 
-
 // Setup an SD/MMC peripheral for simple 'polling mode'.
 // This is slow; no interrupts, hardware flow control, or DMA.
 void sdmmc_setup( SDMMC_TypeDef *SDMMCx );
@@ -157,12 +163,17 @@ int sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, int type, void *buf );
 void sdmmc_cmd_done( SDMMC_TypeDef *SDMMCx );
 // Tell the connected SD card to use a specified block size.
 // I think that the block size is defined in bytes.
-uint32_t sdmmc_set_block_len( SDMMC_TypeDef *SDMMCx, uint32_t bsize );
+void sdmmc_set_block_len( SDMMC_TypeDef *SDMMCx,
+                          uint32_t bsize );
 // Tell the connected SD card to use a specified bus width.
-uint32_t sdmmc_set_bus_width( SDMMC_TypeDef *SDMMCx, uint32_t width );
+void sdmmc_set_bus_width( SDMMC_TypeDef *SDMMCx,
+                          uint16_t card_addr,
+                          uint32_t width );
 // Figure out how much storage capacity the SD card claims
 // to have, in 512-byte blocks. (NOT in bytes)
-uint32_t sdmmc_get_volume_size( SDMMC_TypeDef *SDMMCx );
+uint32_t sdmmc_get_volume_size( SDMMC_TypeDef *SDMMCx,
+                                uint32_t card_type,
+                                uint32_t *csd_regs );
 
 // Read N blocks of data from an address on the SD/MMC card.
 void sdmmc_block_read( SDMMC_TypeDef *SDMMCx,

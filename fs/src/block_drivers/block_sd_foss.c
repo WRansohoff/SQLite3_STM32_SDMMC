@@ -123,8 +123,7 @@ int block_init() {
   // Bits 0-15 are status bits, and bits 16-31 are the new address.
   card.addr = cmd_resp[ 0 ] >> 16;
 
-  // CMD9 to get the card's storage capacity from its
-  // 'card-specific data' field.
+  // CMD9 to get the 'card-specific data' registers.
   sdmmc_cmd_write( sdmmc,
                    SDMMC_CMD_GET_CSD,
                    ( ( uint32_t )card.addr ) << 16,
@@ -132,91 +131,21 @@ int block_init() {
   cmd_resp_ind = sdmmc_cmd_read_type( sdmmc );
   sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_LONG, cmd_resp );
   sdmmc_cmd_done( sdmmc );
-  // Okay, there are a lot of fields in this response. Bit 127
-  // indicates whether the card is standard- or high-capacity.
-  // We already know that at this point, but SC cards have different
-  // responses from HC cards. For SC cards, the card's storage
-  // capacity in bytes = (SIZE_C+1)*2^(C_SIZE_MULT+2)*2^(READ_BL_LEN)
-  // where SIZE_C is bits 62-73, C_SIZE_MULT is bits 47-49, and
-  // READ_BL_LEN is bits 80-83. SDHC / SDXC cards are easier:
-  // capacity (Kbytes) = (SIZE_C+1)*512, and SIZE_C is bits 48-69.
+
+  // Find the card's storage capacity from its CSD registers.
   if ( card.type == SD_CARD_HC ) {
-    // High-capacity card. Retrieve `SIZE_C` from bits 48-69.
-    uint32_t size_c = ( ( cmd_resp[ 1 ] >> 16 ) & 0x0000FFFF ) |
-                      ( ( cmd_resp[ 2 ] & 0x0000003F ) << 16 );
-    // Total capacity is the value * 512KB. Divide by 512 to get the
-    // number of blocks, so `card.blocks` = ( `size_c` + 1 ) * 1024.
-    card.blocks = ( size_c + 1 ) * 1024;
+    // High-capacity card: get the card's capacity in 512B blocks.
+    card.blocks = sdmmc_get_volume_size( sdmmc, SDMMC_HC, cmd_resp );
   }
   else {
     // Standard-capacity card.
-    // Get `size_c` from bits 62-73.
-    uint32_t size_c = cmd_resp[ 3 ] & 0x00003FFF;
-    // Get `c_size_mult` from bits 47-49.
-    uint32_t c_size_mult = ( cmd_resp[ 2 ] & 0x00038000 ) >> 15;
-    // Get `read_bl_len` from bits 80-83.
-    uint32_t read_bl_len = ( cmd_resp[ 3 ] & 0x000F0000 ) >> 16;
-    // Calculate number of 512-byte blocks. (See above comment block)
-    // Note: ( X * 2^Y ) = X << Y, which simplifies this a bit.
-    card.blocks = ( ( ( size_c + 1 ) <<
-                  ( c_size_mult + 2 ) ) <<
-                  read_bl_len ) / 512;
-
-    // CMD16 to set block size to 512 bytes. High-capacity cards
+    card.blocks = sdmmc_get_volume_size( sdmmc, SDMMC_SC, cmd_resp );
+    // Set block size to 512 bytes. High-capacity cards
     // do not need this command, since their block size is fixed.
-    // TODO: Check response for errors.
-    sdmmc_cmd_write( sdmmc,
-                     SDMMC_CMD_SET_BLOCKLEN,
-                     512,
-                     SDMMC_RESPONSE_SHORT );
-    cmd_resp_ind = sdmmc_cmd_read_type( sdmmc );
-    sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_SHORT, cmd_resp );
-    sdmmc_cmd_done( sdmmc );
+    sdmmc_set_block_len( sdmmc, 512 );
   }
 
-  // CMD7 to select the card.
-  // TODO: This returns an 'R1b' response, which means that
-  // the `DAT0` wire is held low until the card is not busy.
-  // So...should I wait for the line to go high here by checking
-  // the GPIO IDR register, or is the STM32 SDMMC peripheral smart
-  // enough to not set its status flags until the busy signal clears?
-  sdmmc_cmd_write( sdmmc,
-                   SDMMC_CMD_SEL_DESEL,
-                   ( ( uint32_t )card.addr ) << 16,
-                   SDMMC_RESPONSE_SHORT );
-  sdmmc_cmd_done( sdmmc );
-
-  // App CMD6 to set the data bus width to 4. Apparently
-  // this can only be done when the card is in 'transmission mode',
-  // which it enters when selected by CMD7. But I'm not exactly
-  // sure if this needs to be set for each transaction, or if it will
-  // stick after being set in this method. I'm hoping for the latter.
-  // (CMD55 needs to precede application commands)
-  sdmmc_cmd_write( sdmmc,
-                   SDMMC_CMD_APP,
-                   0x00000000,
-                   SDMMC_RESPONSE_NONE );
-  sdmmc_cmd_done( sdmmc );
-  // 0x00 = 1-bit bus width, 0x02 = 4-bit bus width.
-  // TODO: Check response for errors.
-  sdmmc_cmd_write( sdmmc,
-                   SDMMC_APP_SET_BUSW,
-                   0x00000002,
-                   SDMMC_RESPONSE_SHORT );
-  cmd_resp_ind = sdmmc_cmd_read_type( sdmmc );
-  sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_SHORT, cmd_resp );
-  sdmmc_cmd_done( sdmmc );
-
-  // CMD7 to de-select the card.
-  // Sending any address except the one that the card previously
-  // published will de-select it. I'm not sure if there are any
-  // guaranteed invalid addresses, so for now, I'll just
-  // XOR the card's address to change all of its bits.
-  sdmmc_cmd_write( sdmmc,
-                   SDMMC_CMD_SEL_DESEL,
-                   ( ( uint32_t )card.addr ^ 0x0000FFFF ) << 16,
-                   SDMMC_RESPONSE_SHORT );
-  sdmmc_cmd_done( sdmmc );
+  sdmmc_set_bus_width( sdmmc, card.addr, SDMMC_BUS_WIDTH_4b );
 
   // Done; return 0 to indicate success.
   return 0;

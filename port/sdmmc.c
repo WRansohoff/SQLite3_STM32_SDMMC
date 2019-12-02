@@ -137,28 +137,109 @@ void sdmmc_cmd_done( SDMMC_TypeDef *SDMMCx ) {
 /**
  * Send a command to tell the connected SD card to use a specified
  * block size. I think that the block size is defined in bytes.
- * This method blocks on the SD card's response, which is returned.
  */
-uint32_t sdmmc_set_block_len( SDMMC_TypeDef *SDMMCx, uint32_t bsize ) {
-  // TODO
-  return 0;
+void sdmmc_set_block_len( SDMMC_TypeDef *SDMMCx,
+                          uint32_t bsize ) {
+  // CMD16 to set block size. High-capacity cards should not
+  // use this command, since their block size is fixed internally.
+  // TODO: Check response for errors.
+  sdmmc_cmd_write( SDMMCx,
+                   SDMMC_CMD_SET_BLOCKLEN,
+                   bsize,
+                   SDMMC_RESPONSE_SHORT );
+  sdmmc_cmd_done( SDMMCx );
 }
 
 /**
  * Send a command to tell the connected SD card to use a specified
  * bus width. This method blocks on and returns the SD card response.
  */
-uint32_t sdmmc_set_bus_width( SDMMC_TypeDef *SDMMCx, uint32_t width ) {
-  // TODO
-  return 0;
+void sdmmc_set_bus_width( SDMMC_TypeDef *SDMMCx,
+                          uint16_t card_addr,
+                          uint32_t width ) {
+  // CMD7 to select the card.
+  // TODO: This returns an 'R1b' response, which means that
+  // the `DAT0` wire is held low until the card is not busy.
+  // So...should I wait for the line to go high here by checking
+  // the GPIO IDR register, or is the STM32 SDMMC peripheral smart
+  // enough to not set its status flags until the busy signal clears?
+  sdmmc_cmd_write( SDMMCx,
+                   SDMMC_CMD_SEL_DESEL,
+                   ( ( uint32_t )card_addr ) << 16,
+                   SDMMC_RESPONSE_SHORT );
+  sdmmc_cmd_done( SDMMCx );
+
+  // App CMD6 to set the data bus width to 4. Apparently
+  // this can only be done when the card is in 'transmission mode',
+  // which it enters when selected by CMD7. But I'm not exactly
+  // sure if this needs to be set for each transaction, or if it will
+  // stick after being set in this method. I'm hoping for the latter.
+  // (CMD55 needs to precede application commands)
+  sdmmc_cmd_write( SDMMCx,
+                   SDMMC_CMD_APP,
+                   0x00000000,
+                   SDMMC_RESPONSE_NONE );
+  sdmmc_cmd_done( SDMMCx );
+  // TODO: Check response for errors.
+  sdmmc_cmd_write( SDMMCx,
+                   SDMMC_APP_SET_BUSW,
+                   width,
+                   SDMMC_RESPONSE_SHORT );
+  sdmmc_cmd_done( SDMMCx );
+
+  // CMD7 to de-select the card.
+  // Sending any address except the one that the card previously
+  // published will de-select it. I'm not sure if there are any
+  // guaranteed invalid addresses, so for now, I'll just
+  // XOR the card's address to change all of its bits.
+  sdmmc_cmd_write( SDMMCx,
+                   SDMMC_CMD_SEL_DESEL,
+                   ( ( uint32_t )card_addr ^ 0x0000FFFF ) << 16,
+                   SDMMC_RESPONSE_SHORT );
+  sdmmc_cmd_done( SDMMCx );
 }
 
 /**
  * Figure out how much storage capacity the SD card (claims to) have.
+ * This method returns the number of 512-byte blocks in the card,
+ * so multiply it by 512 if you want the number of bytes.
+ * TODO: Send CMD9 inside of this method instead of requiring the
+ * raw CSD registers to be passed in.
+ *
+ * Okay, there are a lot of fields in the 'Chip-Specific Data'
+ * response. Bit 127 indicates whether the card is standard- or
+ * high-capacity. (TODO: Check instead of requiring an extra argument.)
+ * SC cards have different responses from HC cards. For SC cards, the
+ * card's storage capacity in bytes =
+ * (SIZE_C+1)*2^(C_SIZE_MULT+2)*2^(READ_BL_LEN), where SIZE_C is bits
+ * 62-73, C_SIZE_MULT is bits 47-49, and READ_BL_LEN is bits 80-83.
+ * SDHC / SDXC cards are easier:
+ * capacity (Kbytes) = (SIZE_C+1)*512, and SIZE_C is bits 48-69.
  */
-uint32_t sdmmc_get_volume_size( SDMMC_TypeDef *SDMMCx ) {
-  // TODO
-  return 0;
+uint32_t sdmmc_get_volume_size( SDMMC_TypeDef *SDMMCx,
+                                uint32_t card_type,
+                                uint32_t *csd_regs ) {
+  if ( card_type == SDMMC_HC ) {
+    // High-capacity card. Retrieve `SIZE_C` from bits 48-69.
+    uint32_t size_c = ( ( csd_regs[ 1 ] >> 16 ) & 0x0000FFFF ) |
+                      ( ( csd_regs[ 2 ] & 0x0000003F ) << 16 );
+    // Total capacity is the value * 512KB. Divide by 512 to get the
+    // number of blocks, so `card.blocks` = ( `size_c` + 1 ) * 1024.
+    return ( size_c + 1 ) * 1024;
+  }
+  else {
+    // Get `size_c` from bits 62-73.
+    uint32_t size_c = csd_regs[ 3 ] & 0x00003FFF;
+    // Get `c_size_mult` from bits 47-49.
+    uint32_t c_size_mult = ( csd_regs[ 2 ] & 0x00038000 ) >> 15;
+    // Get `read_bl_len` from bits 80-83.
+    uint32_t read_bl_len = ( csd_regs[ 3 ] & 0x000F0000 ) >> 16;
+    // Calculate number of 512-byte blocks. (See above comment block)
+    // Note: ( X * 2^Y ) = X << Y, which simplifies this a bit.
+    return ( ( ( size_c + 1 ) <<
+           ( c_size_mult + 2 ) ) <<
+           read_bl_len ) / 512;
+  }
 }
 
 /** Read N blocks of data from an address on the SD/MMC card. */
