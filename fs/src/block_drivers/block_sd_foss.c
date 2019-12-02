@@ -150,17 +150,29 @@ int block_init() {
   }
   else {
     // Standard-capacity card.
-    // TODO: Calculate size.
+    // Get `size_c` from bits 62-73.
+    uint32_t size_c = cmd_resp[ 3 ] & 0x00003FFF;
+    // Get `c_size_mult` from bits 47-49.
+    uint32_t c_size_mult = ( cmd_resp[ 2 ] & 0x00038000 ) >> 15;
+    // Get `read_bl_len` from bits 80-83.
+    uint32_t read_bl_len = ( cmd_resp[ 3 ] & 0x000F0000 ) >> 16;
+    // Calculate number of 512-byte blocks. (See above comment block)
+    // Note: ( X * 2^Y ) = X << Y, which simplifies this a bit.
+    card.blocks = ( ( ( size_c + 1 ) <<
+                  ( c_size_mult + 2 ) ) <<
+                  read_bl_len ) / 512;
 
-    // TODO: CMD16 to set block size to 512 bytes. SDHC / SDXC cards
+    // CMD16 to set block size to 512 bytes. High-capacity cards
     // do not need this command, since their block size is fixed.
+    // TODO: Check response for errors.
+    sdmmc_cmd_write( sdmmc,
+                     SDMMC_CMD_SET_BLOCKLEN,
+                     512,
+                     SDMMC_RESPONSE_SHORT );
+    cmd_resp_ind = sdmmc_cmd_read_type( sdmmc );
+    sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_SHORT, cmd_resp );
+    sdmmc_cmd_done( sdmmc );
   }
-  // (TODO: Perform the calculations described above)
-
-  // TODO: CMD16 to ensure the block length is set to 512B.
-  // SDHC / SDXC cards will always use 512B internally, and it
-  // is a good value for a FAT filesystem. But some cards have
-  // a default of 1024B, according to elmchan and the SD card spec.
 
   // TODO: CMD7 to select the card.
 
