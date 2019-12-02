@@ -174,16 +174,51 @@ int block_init() {
     sdmmc_cmd_done( sdmmc );
   }
 
-  // TODO: CMD7 to select the card.
+  // CMD7 to select the card.
+  // TODO: This returns an 'R1b' response, which means that
+  // the `DAT0` wire is held low until the card is not busy.
+  // So...should I wait for the line to go high here by checking
+  // the GPIO IDR register, or is the STM32 SDMMC peripheral smart
+  // enough to not set its status flags until the busy signal clears?
+  sdmmc_cmd_write( sdmmc,
+                   SDMMC_CMD_SEL_DESEL,
+                   ( ( uint32_t )card.addr ) << 16,
+                   SDMMC_RESPONSE_SHORT );
+  sdmmc_cmd_done( sdmmc );
 
-  // TODO: App CMD6 to set the data bus width to 4. Apparently
+  // App CMD6 to set the data bus width to 4. Apparently
   // this can only be done when the card is in 'transmission mode',
   // which it enters when selected by CMD7. But I'm not exactly
   // sure if this needs to be set for each transaction, or if it will
   // stick after being set in this method. I'm hoping for the latter.
+  // (CMD55 needs to precede application commands)
+  sdmmc_cmd_write( sdmmc,
+                   SDMMC_CMD_APP,
+                   0x00000000,
+                   SDMMC_RESPONSE_NONE );
+  sdmmc_cmd_done( sdmmc );
+  // 0x00 = 1-bit bus width, 0x02 = 4-bit bus width.
+  // TODO: Check response for errors.
+  sdmmc_cmd_write( sdmmc,
+                   SDMMC_APP_SET_BUSW,
+                   0x00000002,
+                   SDMMC_RESPONSE_SHORT );
+  cmd_resp_ind = sdmmc_cmd_read_type( sdmmc );
+  sdmmc_cmd_read( sdmmc, SDMMC_RESPONSE_SHORT, cmd_resp );
+  sdmmc_cmd_done( sdmmc );
 
-  // TODO: CMD7 to de-select the card.
+  // CMD7 to de-select the card.
+  // Sending any address except the one that the card previously
+  // published will de-select it. I'm not sure if there are any
+  // guaranteed invalid addresses, so for now, I'll just
+  // XOR the card's address to change all of its bits.
+  sdmmc_cmd_write( sdmmc,
+                   SDMMC_CMD_SEL_DESEL,
+                   ( ( uint32_t )card.addr ^ 0x0000FFFF ) << 16,
+                   SDMMC_RESPONSE_SHORT );
+  sdmmc_cmd_done( sdmmc );
 
+  // Done; return 0 to indicate success.
   return 0;
 }
 
@@ -218,7 +253,8 @@ int block_get_block_size() { return BLOCK_SIZE; }
 /**
  * Check whether the currently-connected SD card is read-only.
  * TODO: Currently, the `card` struct will always say that
- * the card can be written to.
+ * the card can be written to. It looks like high-capacity cards
+ * don't support many of the write-protection features anyways.
  */
 int block_get_device_read_only() { return card.read_only; }
 
