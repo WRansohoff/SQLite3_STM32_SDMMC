@@ -54,7 +54,7 @@ struct stat {
   long      st_spare4[ 2 ];
 };
 
-#define    S_BLKSIZE  1024 /* size of a block */
+#define    S_BLKSIZE  512 /* size of a block */
 #define    _IFMT      0170000  /* type of file */
 #define    _IFDIR     0040000  /* directory */
 #define    _IFCHR     0020000  /* character special */
