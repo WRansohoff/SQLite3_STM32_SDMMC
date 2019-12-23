@@ -3,6 +3,8 @@
  */
 #include "port/tim.h"
 
+volatile uint32_t tick;
+
 // Set up a timer for PWM output with a given duty cycle and freq.
 // Note: The GPIO pin must be configured before calling this method.
 // Note: The 'ARR' value is shared across all channels, so this
@@ -77,4 +79,15 @@ void timer_periodic_trgo( TIM_TypeDef* TIMx, int freq_hz ) {
 // periodic 'trigger output' updates.
 void timer_adjust_trgo( TIM_TypeDef* TIMx, int freq_hz ) {
   TIMx->ARR  =  ( SystemCoreClock / ( freq_hz * cur_samples ) );
+}
+
+// Delay for a specified number of milliseconds using the given timer.
+// TODO: Technically, this could tick over and cause an early return.
+void timer_delay( uint32_t millis ) {
+  uint32_t next_tick = tick + millis;
+  while ( next_tick > tick ) {};
+}
+
+void SysTick_handler( void ) {
+  ++tick;
 }

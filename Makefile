@@ -29,7 +29,7 @@ SQFLAGS = -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_WAL -
 # Directories to include header files.
 INCLUDE = -I. -I./device_headers -I./sys -I./fs/src -I./fs/src/block_drivers
 # Linker flags.
-LDFLAGS = -mthumb -mcpu=cortex-m4 -mhard-float -mfloat-abi=hard -mfpu=fpv4-sp-d16 -g -Wall -Os -fno-strict-aliasing -fmessage-length=0 --specs=nosys.specs -nostdlib -lgcc
+LDFLAGS = -mthumb -mcpu=cortex-m4 -mhard-float -mfloat-abi=hard -mfpu=fpv4-sp-d16 -g -Wall -Os -fno-strict-aliasing -fmessage-length=0 --specs=nosys.specs -lgcc
 
 .PHONY: all
 all: $(TARGET).a

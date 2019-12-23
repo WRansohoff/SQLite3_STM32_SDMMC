@@ -52,7 +52,7 @@ static inline void board_init( void ) {
   clock_init();
 
   // Enable peripherals: GPIOA, GPIOB, GPIOC, GPIOD,
-  // UART4, ADC, DAC1, DMA1, SPI1, TIM3, SDMMC1, SYSCFG.
+  // UART4, ADC, DAC1, DMA1, SPI1, TIM3, TIM6, SDMMC1, SYSCFG.
   RCC->AHB1ENR  |=  ( RCC_AHB1ENR_DMA1EN );
   RCC->AHB2ENR  |=  ( RCC_AHB2ENR_GPIOAEN |
                       RCC_AHB2ENR_GPIOBEN |
@@ -61,6 +61,7 @@ static inline void board_init( void ) {
                       RCC_AHB2ENR_ADCEN );
   RCC->APB1ENR1 |=  ( RCC_APB1ENR1_DAC1EN |
                       RCC_APB1ENR1_TIM3EN |
+                      RCC_APB1ENR1_TIM6EN |
                       RCC_APB1ENR1_UART4EN );
   RCC->APB2ENR  |=  ( RCC_APB2ENR_SDMMC1EN |
                       RCC_APB2ENR_SPI1EN |
@@ -93,10 +94,10 @@ static inline void board_init( void ) {
   gpio_af_setup( GPIOA, 5, 5, 1 );
   gpio_af_setup( GPIOA, 6, 5, 1 );
   gpio_af_setup( GPIOA, 7, 5, 1 );
+  */
   // PA15: 'Heartbeat' LED. (Note: overrides JTDI debugging pin)
   gpio_setup( GPIOA, 15, GPIO_OUT_PP );
   gpio_lo( GPIOA, 15 );
-  */
   // PC8, PC9, PC10, PC11, PC12: Alt. Func. #12 / high-speed:
   // (SD/MMC dat0, dat1, dat2, dat3, and clock pins)
   gpio_af_setup( GPIOC, 8,  12, 2 );
@@ -185,6 +186,9 @@ static inline void board_init( void ) {
   NVIC_SetPriority( EXTI15_10_IRQn, btn_pri_encoding );
   NVIC_EnableIRQ( EXTI15_10_IRQn );
   */
+
+  // Initialize the SysTick timer to tick at 1ms.
+  SysTick_Config( SystemCoreClock / 1000 );
 
   /*
   // Select the system clock as the ADC clock source.

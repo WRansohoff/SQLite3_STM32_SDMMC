@@ -14,6 +14,9 @@
 // Device header file.
 #include "stm32l4xx.h"
 
+// HAL includes.
+#include "port/tim.h"
+
 // Macro definitions. TODO: Enums?
 // SD card response types. These correspond to the STM32's expected
 // values in the `WAITRESP` field of the `CMD` register.
@@ -27,6 +30,22 @@
 // Card type definition.
 #define SDMMC_SC             ( 0 )
 #define SDMMC_HC             ( 1 )
+// Whether to expect a valid CRC in the card's response or not.
+#define SDMMC_CHECK_CRC      ( 0 )
+#define SDMMC_NO_CRC         ( 1 )
+// SD card state machine values, returned in the status register.
+#define SDMMC_STATE_IDLE     ( 0 )
+#define SDMMC_STATE_READY    ( 1 )
+#define SDMMC_STATE_IDENT    ( 2 )
+#define SDMMC_STATE_STBY     ( 3 )
+#define SDMMC_STATE_TRAN     ( 4 )
+#define SDMMC_STATE_DATA     ( 5 )
+#define SDMMC_STATE_RCV      ( 6 )
+#define SDMMC_STATE_PRG      ( 7 )
+#define SDMMC_STATE_DIS      ( 8 )
+#define SDMMC_STATE_IO       ( 15 )
+// SD card status register bit flags.
+#define SDMMC_READY_FOR_DATA ( 0x00000100 )
 
 // SD card command index values. Because referring to them as
 // `CMD0`, `CMD1`, etc is confusing and not very helpful.
@@ -41,7 +60,7 @@
 // 'Respond With CID Register' command - this asks any cards on
 // the bus to respond with the contents of their CID register.
 // ('CID' = 'Card IDentifier')
-#define SDMMC_CMD_RECV_CID       ( 2 )
+#define SDMMC_CMD_PUB_CID        ( 2 )
 // Ask the card to publish a new 'Relative Card Address' (RCA)
 // which it will respond to. I think this is used with CMD7 to select
 // an active card when there are multiple ones on the same bus.
@@ -157,7 +176,10 @@ uint8_t sdmmc_cmd_read_type( SDMMC_TypeDef *SDMMCx );
 // registers into a buffer. This receives the response from a command.
 // If `type` is `SDMMC_RESPONSE_SHORT`, only the first word is read.
 // If `type` is `SDMMC_RESPONSE_LONG`, all 4 words are read.
-int sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx, int type, void *buf );
+int sdmmc_cmd_read( SDMMC_TypeDef *SDMMCx,
+                    int type,
+                    int ignore_crc,
+                    void *buf );
 // Acknowledge that a command response was received. This does not
 // send any data to the SD card; it just resets internal state.
 void sdmmc_cmd_done( SDMMC_TypeDef *SDMMCx );
@@ -174,17 +196,31 @@ void sdmmc_set_bus_width( SDMMC_TypeDef *SDMMCx,
 uint32_t sdmmc_get_volume_size( SDMMC_TypeDef *SDMMCx,
                                 uint32_t card_type,
                                 uint32_t *csd_regs );
+// Check if the card is busy or not.
+int sdmmc_is_card_busy( SDMMC_TypeDef *SDMMCx, uint16_t card_addr );
 
-// Read N blocks of data from an address on the SD/MMC card.
-void sdmmc_block_read( SDMMC_TypeDef *SDMMCx,
+// Read one block of data from an address on the SD/MMC card.
+void sdmmc_read_block( SDMMC_TypeDef *SDMMCx,
+                       uint32_t card_type,
+                       uint16_t card_addr,
                        blockno_t start_block,
-                       void *buf,
-                       int blen );
-// Write N blocks of data to an address on the SD/MMC card.
-void sdmmc_block_write( SDMMC_TypeDef *SDMMCx,
+                       uint32_t *buf );
+// Read N blocks of data from an address on the SD/MMC card.
+void sdmmc_read_blocks( SDMMC_TypeDef *SDMMCx,
                         blockno_t start_block,
-                        void *buf,
+                        uint32_t *buf,
                         int blen );
+// Write one block of data to an address on the SD/MMC card.
+void sdmmc_write_block( SDMMC_TypeDef *SDMMCx,
+                        uint32_t card_type,
+                        uint16_t card_addr,
+                        blockno_t start_block,
+                        uint32_t *buf );
+// Write N blocks of data to an address on the SD/MMC card.
+void sdmmc_write_blocks( SDMMC_TypeDef *SDMMCx,
+                         blockno_t start_block,
+                         uint32_t *buf,
+                         int blen );
 // Erase a block range on the SD/MMC card, given start ID and length.
 void sdmmc_erase_blocks( SDMMC_TypeDef *SDMMCx,
                          blockno_t start_block,
